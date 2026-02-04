@@ -25,7 +25,7 @@ class WhatsappService {
       print("Debug: Clean Phone: $cleanPhone");
 
       _client = await WhatsappBotFlutterMobile.connect(
-        saveSession: false,
+        saveSession: true,
         linkWithPhoneNumber: cleanPhone,
         onPhoneLinkCode: (code) {
           print("SUCCESS: Pairing Code Received: $code");
