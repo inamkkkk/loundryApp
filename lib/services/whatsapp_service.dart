@@ -21,6 +21,19 @@ class WhatsappService {
 
     try {
       print("Starting WhatsApp Setup...");
+
+      // FORCE CLEANUP: Clear cache/storage to fix "multiple UIM roots" / corruption
+      try {
+        print("Clearing WebView Cache...");
+        await InAppWebViewController.clearAllCache();
+        final storage =
+            WebStorageManager.instance(); // Requires importing flutter_inappwebview
+        await storage.deleteAllData();
+        print("WebView Cache Cleared.");
+      } catch (e) {
+        print("Warning: Failed to clear cache: $e");
+      }
+
       String? cleanPhone = _formatPhone(phoneNumber);
       print("Debug: Clean Phone: $cleanPhone");
 
