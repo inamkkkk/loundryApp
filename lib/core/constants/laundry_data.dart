@@ -1,0 +1,56 @@
+class LaundryData {
+  static const Map<String, List<String>> garmentCategories = {
+    'Men': [
+      'Shirt',
+      'T-Shirt',
+      'Trouser',
+      'Jeans',
+      'Suit (2pc)',
+      'Suit (3pc)',
+      'Kurta',
+      'Shalwar',
+      'Kameez',
+      'Waistcoat',
+      'Sherwani',
+      'Shorts',
+      'Jacket',
+    ],
+    'Women': [
+      'Kurta',
+      'Shalwar',
+      'Kameez',
+      'Dupatta',
+      'Scarf',
+      'Abaya',
+      'Saree',
+      'Gown',
+      'Lehenga',
+      'Blouse',
+      'Skirt',
+    ],
+    'Kids': ['Shirt', 'T-Shirt', 'Frock', 'Shorts', 'School Uniform', 'Jacket'],
+    'Household': [
+      'Bed Sheet (Single)',
+      'Bed Sheet (Double)',
+      'Pillow Case',
+      'Blanket (Single)',
+      'Blanket (Double)',
+      'Comforter',
+      'Curtain (Heavy)',
+      'Curtain (Light)',
+      'Towel (Bath)',
+      'Towel (Hand)',
+      'Table Cloth',
+      'Sofa Cover',
+    ],
+  };
+
+  static const List<String> serviceTypes = [
+    'Wash & Iron',
+    'Iron Only',
+    'Dry Clean',
+    'Wash & Fold',
+    'Steam Press',
+    'Darning/Repair',
+  ];
+}
