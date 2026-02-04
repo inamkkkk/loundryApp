@@ -486,89 +486,11 @@ class _WhatsAppConnectTileState extends State<_WhatsAppConnectTile> {
   }
 
   void _startPairing() {
-    final phoneController = TextEditingController();
-
-    // 1. Ask for Phone Number first
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Enter WhatsApp Number"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("Enter the number you want to send receipts FROM."),
-            TextField(
-              controller: phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(hintText: "e.g. +923001234567"),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context); // Close phone input
-              _initiateBot(phoneController.text);
-            },
-            child: const Text("Connect"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _initiateBot(String phone) {
-    // Show Pairing Dialog with Loading State
+    // Directly show QR code dialog
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          String? pairingCode;
-          String? errorMsg;
-
-          // Trigger Service
-          if (pairingCode == null && errorMsg == null) {
-            WhatsappService.setupBot(
-              phoneNumber: phone,
-              onPairingCode: (code) {
-                if (context.mounted) {
-                  setState(() {
-                    pairingCode = code;
-                  });
-                }
-              },
-              onSuccess: () {
-                if (context.mounted) {
-                  Navigator.pop(context); // Close Dialog
-                  _markConnected();
-                }
-              },
-              onError: (err) {
-                if (context.mounted) {
-                  setState(() {
-                    errorMsg = err;
-                  });
-                }
-              },
-            );
-          }
-
-          return PairingDialog(
-            isLoading: pairingCode == null && errorMsg == null,
-            code: pairingCode,
-            error: errorMsg,
-            onCancel: () {
-              WhatsappService.disconnect();
-              Navigator.pop(context);
-            },
-          );
-        },
-      ),
+      builder: (context) => const PairingDialog(),
     );
   }
 

@@ -1,170 +1,206 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:loundryapp/core/theme/white_label_theme.dart';
+import 'package:loundryapp/services/whatsapp_service.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
-class PairingDialog extends StatelessWidget {
-  final String? code;
-  final bool isLoading;
-  final String? error;
-  final VoidCallback? onCancel;
+class PairingDialog extends StatefulWidget {
+  const PairingDialog({super.key});
 
-  const PairingDialog({
-    super.key,
-    this.code,
-    this.isLoading = true,
-    this.error,
-    this.onCancel,
-  });
+  @override
+  State<PairingDialog> createState() => _PairingDialogState();
+}
+
+class _PairingDialogState extends State<PairingDialog> {
+  bool _isLoading = true;
+  Uint8List? _qrCodeImage;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeWhatsApp();
+  }
+
+  Future<void> _initializeWhatsApp() async {
+    await WhatsappService.connectWithQR(
+      onQrCode: (imageBytes) {
+        setState(() {
+          _isLoading = false;
+          _qrCodeImage = imageBytes;
+        });
+      },
+      onSuccess: () {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('WhatsApp Connected Successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      },
+      onError: (error) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = error;
+        });
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      backgroundColor: const Color(0xFF1A1A1A),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-      backgroundColor: WhiteLabelTheme.surfaceWhite,
-      child: Padding(
-        padding: EdgeInsets.all(24.w),
+      child: Container(
+        width: 400.w,
+        padding: EdgeInsets.all(32.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon
-            Container(
-              padding: EdgeInsets.all(16.w),
-              decoration: BoxDecoration(
-                color: const Color(0xFF25D366).withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Iconsax.mobile,
-                size: 32.sp,
-                color: const Color(0xFF25D366),
-              ),
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF25D366).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Icon(
+                    Iconsax.mobile,
+                    color: const Color(0xFF25D366),
+                    size: 24.sp,
+                  ),
+                ),
+                SizedBox(width: 16.w),
+                Text(
+                  'Connect WhatsApp',
+                  style: GoogleFonts.inter(
+                    fontSize: 20.sp,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: 32.h),
 
-            // Title
-            Text(
-              "Link Device",
-              style: GoogleFonts.outfit(
-                fontSize: 20.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8.h),
-
-            if (isLoading) ...[
-              SizedBox(height: 16.h),
-              const SpinKitThreeBounce(
-                color: WhiteLabelTheme.primaryBlue,
-                size: 24,
-              ),
+            if (_isLoading) ...[
+              const SpinKitCircle(color: Color(0xFF25D366), size: 50),
               SizedBox(height: 16.h),
               Text(
-                "Generating Pairing Code...",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: WhiteLabelTheme.textGrey,
+                'Initializing connection...',
+                style: GoogleFonts.inter(
                   fontSize: 14.sp,
-                ),
-              ),
-            ] else if (error != null) ...[
-              SizedBox(height: 16.h),
-              Text(
-                "Error",
-                style: TextStyle(
-                  color: WhiteLabelTheme.dangerRed,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16.sp,
-                ),
-              ),
-              Text(
-                error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: WhiteLabelTheme.textGrey,
-                  fontSize: 14.sp,
-                ),
-              ),
-            ] else if (code != null) ...[
-              SizedBox(height: 8.h),
-              Text(
-                "Enter this code on your phone:",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: WhiteLabelTheme.textGrey,
-                  fontSize: 14.sp,
-                ),
-              ),
-              SizedBox(height: 16.h),
-
-              // The Code Display
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
-                decoration: BoxDecoration(
-                  color: WhiteLabelTheme.backgroundLight,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: WhiteLabelTheme.borderGrey),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _formatCode(code!),
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 24.sp,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2.0,
-                        color: WhiteLabelTheme.textDark,
-                      ),
-                    ),
-                    SizedBox(width: 16.w),
-                    IconButton(
-                      icon: const Icon(Iconsax.copy),
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: code!));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Code Copied!")),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-
-              SizedBox(height: 16.h),
-              Text(
-                "WhatsApp > Linked Devices > Link with phone number",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12.sp,
-                  color: WhiteLabelTheme.textGrey.withOpacity(0.8),
-                  fontStyle: FontStyle.italic,
+                  color: const Color(0xFF9E9E9E),
                 ),
               ),
             ],
 
-            SizedBox(height: 24.h),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: onCancel ?? () => Navigator.pop(context),
-                child: const Text("Cancel"),
+            if (_qrCodeImage != null) ...[
+              Container(
+                padding: EdgeInsets.all(24.w),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: Image.memory(
+                  _qrCodeImage!,
+                  width: 250.w,
+                  height: 250.w,
+                  fit: BoxFit.contain,
+                ),
               ),
-            ),
+              SizedBox(height: 24.h),
+              Container(
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A2A2A),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Iconsax.info_circle,
+                          color: const Color(0xFF25D366),
+                          size: 20.sp,
+                        ),
+                        SizedBox(width: 8.w),
+                        Text(
+                          'Scan with WhatsApp:',
+                          style: GoogleFonts.inter(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12.h),
+                    Text(
+                      '1. Open WhatsApp on your phone\n2. Go to Settings → Linked Devices\n3. Tap "Link a Device"\n4. Scan the QR code above',
+                      style: GoogleFonts.inter(
+                        fontSize: 13.sp,
+                        color: const Color(0xFFB0B0B0),
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            if (_errorMessage != null) ...[
+              Container(
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Iconsax.warning_2, color: Colors.red, size: 20.sp),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: GoogleFonts.inter(
+                          fontSize: 13.sp,
+                          color: Colors.red.shade300,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16.h),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _isLoading = true;
+                    _errorMessage = null;
+                  });
+                  _initializeWhatsApp();
+                },
+                child: Text(
+                  'Retry',
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF25D366),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
-  }
-
-  String _formatCode(String raw) {
-    // e.g. J2K39L0P -> J2K3-9L0P
-    if (raw.length == 8) {
-      return "${raw.substring(0, 4)}-${raw.substring(4)}";
-    }
-    return raw;
   }
 }

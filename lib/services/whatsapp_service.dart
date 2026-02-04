@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart'; // Still needed for some types if exposed, but less critical now
+import 'dart:typed_data';
 import 'package:whatsapp_bot_flutter_mobile/whatsapp_bot_flutter_mobile.dart';
 import 'package:whatsapp_bot_platform_interface/whatsapp_bot_platform_interface.dart';
 
@@ -7,12 +7,10 @@ class WhatsappService {
   static WhatsappClient? _client;
   static bool _isConnecting = false;
 
-  /// 1. START THE GHOST (Early-Warm & Pairing)
-  /// If [phoneNumber] is provided, it attempts to pair using the code method.
-  /// [onPairingCode] callback returns the 8-digit code to display in UI.
-  static Future<void> setupBot({
-    String? phoneNumber,
-    Function(String)? onPairingCode,
+  /// Connect using QR Code (as per official documentation)
+  /// [onQrCode] callback returns QR code image bytes to display
+  static Future<void> connectWithQR({
+    Function(Uint8List?)? onQrCode,
     Function()? onSuccess,
     Function(String)? onError,
   }) async {
@@ -20,75 +18,52 @@ class WhatsappService {
     _isConnecting = true;
 
     try {
-      print("Starting WhatsApp Setup (Optimized for Slow Devices)...");
-      String? cleanPhone = _formatPhone(phoneNumber);
-      print("Debug: Clean Phone: $cleanPhone");
+      print("Starting WhatsApp Connection with QR Code...");
 
       _client = await WhatsappBotFlutterMobile.connect(
-        saveSession:
-            true, // Keep true to use cached data if available (faster startup)
-        wppInitTimeout: const Duration(
-          seconds: 60,
-        ), // Increased to 60s for slow device/first run
-        connectionTimeout: const Duration(seconds: 60), // Increased to 60s
-        // Injecting a newer version of wa-js to solve "Module Stream was not found" error
-        wppLibraryUrl:
-            "https://unpkg.com/@wppconnect/wa-js@2.28.0/dist/wppconnect-wa.js",
-        linkWithPhoneNumber: cleanPhone,
-        onPhoneLinkCode: (code) {
-          print("SUCCESS: Pairing Code Received: $code");
-          if (onPairingCode != null) {
-            onPairingCode(code);
-          }
-        },
-        onConnectionEvent: (event) {
+        saveSession: true,
+        onConnectionEvent: (ConnectionEvent event) {
           print("DEBUG: Connection Event: $event");
           if (event == ConnectionEvent.connected) {
+            print("SUCCESS: WhatsApp Connected!");
             if (onSuccess != null) onSuccess();
             _isConnecting = false;
           }
         },
-        onQrCode: (qr, image) {
-          print("DEBUG: QR Code callback fired. Page Loaded.");
+        onQrCode: (String qr, Uint8List? imageBytes) {
+          print("DEBUG: QR Code Generated");
+          if (onQrCode != null && imageBytes != null) {
+            onQrCode(imageBytes);
+          }
         },
       );
     } catch (e) {
-      print("WhatsApp Setup Exception: $e");
+      print("WhatsApp Connection Exception: $e");
       if (onError != null) onError(e.toString());
       _isConnecting = false;
     }
   }
 
-  /// 2. SEND & KILL
+  /// Send receipt message
   static Future<void> sendReceipt(String phone, String message) async {
     if (_client == null) {
-      try {
-        await setupBot();
-      } catch (e) {
-        print("Failed to auto-connect for sending: $e");
-        return;
-      }
+      print("Error: WhatsApp not connected");
+      return;
     }
 
-    if (_client != null) {
-      try {
-        String formattedPhone = phone;
-        if (formattedPhone.startsWith("0")) {
-          formattedPhone = "92" + formattedPhone.substring(1);
-        }
-
-        await _client!.chat.sendTextMessage(
-          phone: formattedPhone,
-          message: message,
-        );
-        print("Receipt sent to $formattedPhone");
-
-        Future.delayed(const Duration(seconds: 5), () {
-          disconnect();
-        });
-      } catch (e) {
-        print("Failed to send message: $e");
+    try {
+      String formattedPhone = phone;
+      if (formattedPhone.startsWith("0")) {
+        formattedPhone = "92" + formattedPhone.substring(1);
       }
+
+      await _client!.chat.sendTextMessage(
+        phone: formattedPhone,
+        message: message,
+      );
+      print("Receipt sent to $formattedPhone");
+    } catch (e) {
+      print("Failed to send message: $e");
     }
   }
 
@@ -104,13 +79,4 @@ class WhatsappService {
 
   static bool get isConnected =>
       _client != null && (_client?.isConnected ?? false);
-
-  static String? _formatPhone(String? phone) {
-    if (phone == null) return null;
-    String p = phone.replaceAll("+", "").replaceAll(" ", "");
-    if (p.startsWith("0")) {
-      p = "92" + p.substring(1);
-    }
-    return p;
-  }
 }
