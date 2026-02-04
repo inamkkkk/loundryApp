@@ -20,25 +20,20 @@ class WhatsappService {
     _isConnecting = true;
 
     try {
-      print("Starting WhatsApp Setup...");
-
-      // FORCE CLEANUP: Clear cache/storage to fix "multiple UIM roots" / corruption
-      try {
-        print("Clearing WebView Cache...");
-        await InAppWebViewController.clearAllCache();
-        final storage =
-            WebStorageManager.instance(); // Requires importing flutter_inappwebview
-        await storage.deleteAllData();
-        print("WebView Cache Cleared.");
-      } catch (e) {
-        print("Warning: Failed to clear cache: $e");
-      }
-
+      print("Starting WhatsApp Setup (Optimized for Slow Devices)...");
       String? cleanPhone = _formatPhone(phoneNumber);
       print("Debug: Clean Phone: $cleanPhone");
 
       _client = await WhatsappBotFlutterMobile.connect(
-        saveSession: true,
+        saveSession:
+            true, // Keep true to use cached data if available (faster startup)
+        wppInitTimeout: const Duration(
+          seconds: 60,
+        ), // Increased to 60s for slow device/first run
+        connectionTimeout: const Duration(seconds: 60), // Increased to 60s
+        // Injecting a newer version of wa-js to solve "Module Stream was not found" error
+        wppLibraryUrl:
+            "https://unpkg.com/@wppconnect/wa-js@2.28.0/dist/wppconnect-wa.js",
         linkWithPhoneNumber: cleanPhone,
         onPhoneLinkCode: (code) {
           print("SUCCESS: Pairing Code Received: $code");
@@ -56,7 +51,6 @@ class WhatsappService {
         onQrCode: (qr, image) {
           print("DEBUG: QR Code callback fired. Page Loaded.");
         },
-        // camelCase onError Removed as it is not supported in v2.1.2
       );
     } catch (e) {
       print("WhatsApp Setup Exception: $e");
